@@ -7,7 +7,7 @@ import pickle
 from main import NER
 
 
-vec = pickle.load(open("models/vec.pkl", 'rb'))
+vec = pickle.load(open("models/w2v/vec.pkl", 'rb'))
 ner = NER()
 
 
