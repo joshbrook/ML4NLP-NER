@@ -1,3 +1,6 @@
-models/lr*
-
-out/ablation*
+extra
+.idea
+__pycache__
+models/svm.pkl
+models/lstm.pkl
+models/w2v

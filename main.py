@@ -11,7 +11,7 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
 
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, FastText
 import gensim.downloader as api
 
 
@@ -20,8 +20,9 @@ class NER:
     def __init__(self, modelname="", trainingfile="data/conll2003.train.conll", inputfile="data/conll2003.test.conll"):
         self.trainingfile = trainingfile
         self.inputfile = inputfile
-        self.outputfile = "out/" + modelname + ".txt"
+        self.outputfile = "out/" + modelname + "tuned.txt"
         self.modelname = modelname
+        self.modelout = "models/" + modelname + "tuned.pkl"
         self.lem = WordNetLemmatizer()
         self.stopwords = set(stopwords.words('english'))
 
@@ -54,6 +55,12 @@ class NER:
         wordset = set([token for token, _ in tokens])
         features = []
         ne = []
+
+        if not simple:
+            # Load the word embeddings
+            # wv = api.load('word2vec-google-news-300')
+            wv = Word2Vec.load("models/w2vtuned.model").wv
+            # wv = FastText.load("models/FT.model").wv
 
         with open(filename, 'r', encoding='utf8') as infile:
             for i, line in enumerate(infile):
@@ -101,10 +108,6 @@ class NER:
                             feature_dict['is_oov'] = False
                             
                         # add word embeddings
-
-                        wv = api.load('word2vec-google-news-300')
-                        # wv = Word2Vec.load("w2vtuned.model").wv
-
                         for j in range(300):
                             if token in wv:
                                 feature_dict['wv' + str(j)] = wv[token][j]
@@ -114,7 +117,7 @@ class NER:
                         features.append(feature_dict)
                     
         return features, ne
-    
+
 
     def create_classifier(self, train_features, train_targets):
         """Creates a classifier based on the training data."""
@@ -125,7 +128,7 @@ class NER:
             model = GaussianNB()
             
         if self.modelname == "svm":
-            model = SVC()
+            model = SVC(kernel='linear', C=1, tol=0.01, gamma=0.1)
         
         # Vectorisation
         vec = DictVectorizer()
@@ -137,10 +140,10 @@ class NER:
         else:
             fitted = model.fit(features_vectorized, train_targets)
             
-        with open("models/" + self.modelname + ".pkl", 'wb') as f:
+        with open(self.modelout, 'wb') as f:
             pickle.dump(fitted, f)
             
-        #with open("models/vec.pkl", 'wb') as f:
+        # with open("models/vec.pkl", 'wb') as f:
         #   pickle.dump(vec, f)
         
         return fitted, vec
@@ -168,7 +171,7 @@ class NER:
 
 
     def train(self):
-    
+
         training_features, gold_labels = self.extract_features_and_labels(self.trainingfile)
         print("Extracted features and labels.")
         ml_model, vectoriser = self.create_classifier(training_features, gold_labels)
@@ -179,11 +182,11 @@ class NER:
 
 if __name__ == '__main__':
 
-    name = "lr"
+    name = "svm"
     tfile = "data/conll2003.train.conll"
     ifile = "data/conll2003.test.conll"
 
-    print(f'Running {name} model.')
+    print(f'Training {name} model.')
 
     ner = NER(name)
 
